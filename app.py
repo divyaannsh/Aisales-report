@@ -1,5 +1,5 @@
 """
-Indus Towers AI Exception Reporter — Enterprise Streamlit Dashboard.
+TowerPulse AI — Enterprise Telecom Infrastructure Dashboard.
 
 Natural language query interface over telecom tower infrastructure dataset
 (tower_sites) with zero-trust LLM schema validation, Plotly charts, and multi-vector exception analytics.
@@ -9,7 +9,6 @@ import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
-import plotly.graph_objects as go
 
 from db import init_db, get_schema, get_allowed_tables_and_columns, execute_query, reset_and_reseed_db
 from llm import generate_and_validate_sql, _get_api_key
@@ -17,7 +16,7 @@ from exceptions import flag_exceptions
 
 # Page Configuration
 st.set_page_config(
-    page_title="Indus Towers AI Exception Reporter | Infrastructure Analytics",
+    page_title="TowerPulse AI | Enterprise Telecom Infrastructure Analytics",
     page_icon="🗼",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -93,9 +92,9 @@ def render_header():
     """Render enterprise hero banner."""
     st.markdown("""
     <div class="hero-container">
-        <div class="hero-title">🗼 Indus Towers AI Exception Reporter</div>
+        <div class="hero-title">🗼 TowerPulse AI</div>
         <div class="hero-subtitle">
-            Natural-Language Query Layer over Telecom Tower Infrastructure (SLA Breaches, Colocation Shortfalls, Energy Overruns)
+            Enterprise Telecom Infrastructure Reporter (SLA Uptime Breaches, Colocation Shortfalls, Energy Overruns)
         </div>
         <div class="hero-badges">
             <span class="badge">🚀 Production Live</span>
@@ -135,7 +134,7 @@ def main():
 
         st.markdown("---")
 
-        # Exception Vector Filtering Controls
+        # Exception Filter Controls
         st.subheader("🎯 Exception Filter Controls")
         
         exception_type = st.selectbox(
@@ -165,7 +164,7 @@ def main():
         st.markdown("---")
 
         # Portfolio Showcase Note
-        st.subheader("💼 Resume & Portfolio Focus")
+        st.subheader("💼 Portfolio & Resume Note")
         st.info(
             "**Core Innovation:**\n"
             "Prevents LLM hallucination and invalid SQL execution by inspecting query AST & column tokens against the `tower_sites` database schema before running."
@@ -174,14 +173,14 @@ def main():
         st.markdown("---")
 
         # Database Info & Reseed
-        st.subheader("🗄️ Indus Towers Dataset")
+        st.subheader("🗄️ Telecom Tower Dataset")
         tables, allowed_cols = get_allowed_tables_and_columns()
         st.caption(f"**Table:** `{tables[0]}` (969 rows)")
         st.caption(f"**Columns:** `{', '.join(allowed_cols)}`")
 
         if st.button("🔄 Reset & Reload Dataset", use_container_width=True):
             reset_and_reseed_db()
-            st.success("Indus Towers dataset reloaded successfully!")
+            st.success("Telecom tower dataset reloaded successfully!")
             st.rerun()
 
     # ---------------------------------------------------------
@@ -368,7 +367,7 @@ def main():
             st.download_button(
                 label="📥 Export Tower Exception Report (CSV)",
                 data=csv_data,
-                file_name=f"indus_tower_exceptions.csv",
+                file_name=f"towerpulse_exceptions.csv",
                 mime="text/csv"
             )
 
@@ -378,7 +377,7 @@ def main():
     st.markdown("---")
     with st.expander("🎓 Technical Architecture & Interview Overview"):
         st.markdown("""
-        ### Indus Towers AI Infrastructure Exception Reporter
+        ### TowerPulse AI — Infrastructure Exception Reporter
 
         ```
         [ Natural Language Question ] 
@@ -403,7 +402,7 @@ def main():
         ```
 
         #### Key Talking Points for Technical Interviews:
-        - **Dataset**: Synthetic Indus Towers dataset (969 records, 60 sites across 10 circles: Delhi, Mumbai, UP-East, Punjab, Maharashtra, Karnataka, etc.).
+        - **Dataset**: Synthetic telecom tower dataset (969 records, 60 sites across 10 circles: Delhi, Mumbai, UP-East, Punjab, Maharashtra, Karnataka, etc.).
         - **Multi-Vector Exception Detection**:
           1. **SLA Uptime Breaches**: Detects sites failing contract SLA (`99.5%` target).
           2. **Colocation Shortfalls**: Identifies sites with actual tenants lower than planned capacity.
