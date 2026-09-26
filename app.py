@@ -1,14 +1,15 @@
 """
-AI Sales Exception Reporter — Enterprise Streamlit Dashboard.
+Indus Towers AI Exception Reporter — Enterprise Streamlit Dashboard.
 
-Resume-ready, production-grade UI for natural language query layer over structured
-sales data (Tech Electronics Store) with deterministic LLM schema validation, Plotly charts, and exception analytics.
+Natural language query interface over telecom tower infrastructure dataset
+(tower_sites) with zero-trust LLM schema validation, Plotly charts, and multi-vector exception analytics.
 """
 
 import os
 import streamlit as st
 import pandas as pd
 import plotly.express as px
+import plotly.graph_objects as go
 
 from db import init_db, get_schema, get_allowed_tables_and_columns, execute_query, reset_and_reseed_db
 from llm import generate_and_validate_sql, _get_api_key
@@ -16,8 +17,8 @@ from exceptions import flag_exceptions
 
 # Page Configuration
 st.set_page_config(
-    page_title="AI Sales Exception Reporter | Tech Store Analytics",
-    page_icon="📱",
+    page_title="Indus Towers AI Exception Reporter | Infrastructure Analytics",
+    page_icon="🗼",
     layout="wide",
     initial_sidebar_state="expanded"
 )
@@ -92,15 +93,15 @@ def render_header():
     """Render enterprise hero banner."""
     st.markdown("""
     <div class="hero-container">
-        <div class="hero-title">📱 Tech Electronics AI Sales Exception Reporter</div>
+        <div class="hero-title">🗼 Indus Towers AI Exception Reporter</div>
         <div class="hero-subtitle">
-            Natural-Language Query Layer over Store Target Metrics (iPhone 15, MacBook Air, AirPods Pro, Samsung S24) with Zero-Trust LLM Validation
+            Natural-Language Query Layer over Telecom Tower Infrastructure (SLA Breaches, Colocation Shortfalls, Energy Overruns)
         </div>
         <div class="hero-badges">
             <span class="badge">🚀 Production Live</span>
             <span class="badge">🛡️ Zero-Hallucination Validation Engine</span>
             <span class="badge">⚡ Powered by Groq & LLaMA3</span>
-            <span class="badge">🏙️ Cities: Delhi, Mumbai, Bengaluru, Hyderabad</span>
+            <span class="badge">📡 10 Circles | 60 Towers | 960+ Rows</span>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -134,68 +135,84 @@ def main():
 
         st.markdown("---")
 
-        # Configurable Exception Threshold Slider (STEP 4)
-        st.subheader("🎯 Target Threshold Slider")
-        threshold_pct = st.slider(
-            "Flag Target Misses Below (%):",
-            min_value=50,
-            max_value=100,
-            value=90,
-            step=1,
-            help="Dynamic target threshold. E.g. 90% flags any city/product selling under 90% of target."
+        # Exception Vector Filtering Controls
+        st.subheader("🎯 Exception Filter Controls")
+        
+        exception_type = st.selectbox(
+            "Filter Category:",
+            ["All Exceptions", "SLA Uptime Breach", "Colocation Shortfall", "Energy Overrun"],
+            help="Select specific tower exception vector or view combined exceptions."
+        )
+
+        uptime_sla_threshold = st.slider(
+            "SLA Uptime Breach Threshold (%):",
+            min_value=90.0,
+            max_value=99.5,
+            value=95.0,
+            step=0.5,
+            help="Flags towers with uptime below this threshold (Contract SLA is 99.5%)."
+        )
+
+        energy_overrun_pct = st.slider(
+            "Energy Overrun Threshold (% over budget):",
+            min_value=0.0,
+            max_value=30.0,
+            value=10.0,
+            step=1.0,
+            help="Flags towers consuming more than Budget + X%."
         )
 
         st.markdown("---")
 
-        # Portfolio & Resume Highlight Card
-        st.subheader("💼 Portfolio Showcase Note")
+        # Portfolio Showcase Note
+        st.subheader("💼 Resume & Portfolio Focus")
         st.info(
-            "**Technical Highlight:**\n"
-            "Guarantees **zero-hallucination execution** by inspecting LLM-generated SQL against the live SQLite schema metadata before running any query."
+            "**Core Innovation:**\n"
+            "Prevents LLM hallucination and invalid SQL execution by inspecting query AST & column tokens against the `tower_sites` database schema before running."
         )
 
         st.markdown("---")
 
         # Database Info & Reseed
-        st.subheader("🗄️ Tech Store Dataset")
+        st.subheader("🗄️ Indus Towers Dataset")
         tables, allowed_cols = get_allowed_tables_and_columns()
-        st.caption(f"**Table:** `{tables[0]}` (120 rows)")
+        st.caption(f"**Table:** `{tables[0]}` (969 rows)")
         st.caption(f"**Columns:** `{', '.join(allowed_cols)}`")
 
-        if st.button("🔄 Reset & Seed Fresh Data", use_container_width=True):
+        if st.button("🔄 Reset & Reload Dataset", use_container_width=True):
             reset_and_reseed_db()
-            st.success("Database re-seeded with 120 tech store records!")
+            st.success("Indus Towers dataset reloaded successfully!")
             st.rerun()
 
     # ---------------------------------------------------------
     # MAIN WORKSPACE: Preset Queries & Input Form
     # ---------------------------------------------------------
-    st.subheader("💡 Sample Tech Store Queries (Click to load):")
+    st.subheader("💡 Sample Telecom Infrastructure Queries (Click to load):")
     
     q_col1, q_col2, q_col3, q_col4 = st.columns(4)
     
-    preset1 = "Which cities missed target for iPhone 15 in August?"
-    preset2 = "Show sales data for MacBook Air in Mumbai for July 2024"
-    preset3 = "Which products underperformed in Bengaluru?"
-    preset4 = "Show performance for Sony Headphones across all cities"
+    preset1 = "Which tower sites in Delhi breached SLA uptime in August 2026?"
+    preset2 = "Show Airtel tower sites in Mumbai with colocation shortfall"
+    preset3 = "List towers in UP-East over budget on energy in July 2026"
+    preset4 = "Show all tower sites for Reliance Jio in Karnataka"
 
-    if q_col1.button("📱 iPhone 15 (Aug)", use_container_width=True):
+    if q_col1.button("🗼 Delhi SLA Breaches", use_container_width=True):
         st.session_state["user_question"] = preset1
-    if q_col2.button("💻 MacBook (Mumbai)", use_container_width=True):
+    if q_col2.button("📶 Airtel Mumbai Shortfall", use_container_width=True):
         st.session_state["user_question"] = preset2
-    if q_col3.button("🏙️ Bengaluru Misses", use_container_width=True):
+    if q_col3.button("⚡ UP-East Energy Overruns", use_container_width=True):
         st.session_state["user_question"] = preset3
-    if q_col4.button("🎧 Sony Headphones", use_container_width=True):
+    if q_col4.button("📡 Jio Karnataka Towers", use_container_width=True):
         st.session_state["user_question"] = preset4
 
     # Main Question Input Box
     with st.form("main_query_form"):
         user_input = st.text_input(
-            "Ask a business question in plain English:",
+            "Ask a telecom infrastructure question in plain English:",
             value=st.session_state["user_question"],
-            placeholder="e.g. Which cities missed target for iPhone 15 in August?"
+            placeholder="e.g. Which tower sites in Delhi breached SLA uptime in August 2026?"
         )
-        submit_btn = st.form_submit_button("🔍 Execute & Flag Exceptions", use_container_width=True)
+        submit_btn = st.form_submit_button("🔍 Execute & Analyze Tower Exceptions", use_container_width=True)
 
     # ---------------------------------------------------------
     # PIPELINE EXECUTION & VALIDATION
@@ -205,7 +222,7 @@ def main():
         schema = get_schema()
         tables, allowed_cols = get_allowed_tables_and_columns()
 
-        with st.spinner("Processing natural language query through LLM & validation layer..."):
+        with st.spinner("Translating natural language query via LLM & validating schema..."):
             success, generated_sql, status_msg, attempts = generate_and_validate_sql(
                 user_input, schema, allowed_cols, tables
             )
@@ -215,11 +232,11 @@ def main():
             p_col1, p_col2 = st.columns([3, 2])
             
             with p_col1:
-                st.markdown("**Generated SQL Statement:**")
+                st.markdown("**Generated SQL Query:**")
                 st.code(generated_sql, language="sql")
                 
             with p_col2:
-                st.markdown("**Validation Engine Audit:**")
+                st.markdown("**Validation Audit Engine:**")
                 if success:
                     st.success(f"✅ {status_msg}")
                 else:
@@ -248,89 +265,99 @@ def main():
             return
 
         if raw_df.empty:
-            st.warning("Query executed successfully, but returned 0 matching records.")
+            st.warning("Query executed successfully, but returned 0 matching tower records.")
             return
 
-        # Apply Exception Logic (STEP 4)
-        flagged_df = flag_exceptions(raw_df, threshold_pct=threshold_pct)
+        # Apply Telecom Exception Logic
+        flagged_df = flag_exceptions(
+            raw_df,
+            exception_type=exception_type,
+            uptime_sla_threshold=uptime_sla_threshold,
+            energy_overrun_pct=energy_overrun_pct
+        )
 
         # ---------------------------------------------------------
         # DASHBOARD RESULTS & VISUALIZATIONS
         # ---------------------------------------------------------
         st.markdown("---")
-        st.subheader(f"📈 Target Exception Report (< {threshold_pct}% Target Threshold)")
+        st.subheader(f"📈 Tower Infrastructure Exception Analysis ({exception_type})")
 
         # Executive Metrics Cards
         m1, m2, m3, m4 = st.columns(4)
-        m1.metric("Evaluated Records", len(raw_df))
-        m2.metric("Flagged Exceptions", len(flagged_df), delta=f"{len(flagged_df)} under target", delta_color="inverse")
+        m1.metric("Evaluated Tower Records", len(raw_df))
+        m2.metric("Flagged Exceptions", len(flagged_df), delta=f"{len(flagged_df)} exceptions", delta_color="inverse")
 
-        if "achievement_pct" in flagged_df.columns and not flagged_df.empty:
-            avg_achievement = flagged_df["achievement_pct"].mean()
-            m3.metric("Avg Target Achievement", f"{avg_achievement:.1f}%")
+        if "uptime_pct" in flagged_df.columns and not flagged_df.empty:
+            avg_uptime = flagged_df["uptime_pct"].mean()
+            m3.metric("Avg Site Uptime", f"{avg_uptime:.2f}%")
         else:
-            m3.metric("Avg Target Achievement", "N/A")
+            m3.metric("Avg Site Uptime", "N/A")
 
-        if "unit_deficit" in flagged_df.columns and not flagged_df.empty:
-            total_deficit = flagged_df["unit_deficit"].sum()
-            m4.metric("Total Unit Deficit", f"{total_deficit:,} units")
+        if "energy_consumption_kwh" in flagged_df.columns and not flagged_df.empty:
+            total_energy = flagged_df["energy_consumption_kwh"].sum()
+            m4.metric("Total Energy Consumed", f"{total_energy:,.1f} kWh")
         else:
-            m4.metric("Total Unit Deficit", "N/A")
+            m4.metric("Total Energy Consumed", "N/A")
 
         if flagged_df.empty:
-            st.success(f"🎉 No sales exceptions found! All returned records met or exceeded the {threshold_pct}% target threshold.")
+            st.success("🎉 No tower infrastructure exceptions found for the specified thresholds!")
             st.dataframe(raw_df, use_container_width=True)
         else:
             # Render Interactive Plotly Charts
             chart_col1, chart_col2 = st.columns(2)
 
             with chart_col1:
-                if "target_units" in flagged_df.columns and "actual_units" in flagged_df.columns:
-                    plot_data = []
-                    for _, row in flagged_df.iterrows():
-                        label = f"{row.get('region', '')} - {row.get('product', '')}"
-                        plot_data.append({"Item": label, "Type": "Target Units", "Units": row["target_units"]})
-                        plot_data.append({"Item": label, "Type": "Actual Units", "Units": row["actual_units"]})
-                    
-                    fig_bar = px.bar(
-                        pd.DataFrame(plot_data),
-                        x="Item",
-                        y="Units",
-                        color="Type",
-                        barmode="group",
-                        title="Target vs Actual Sales Units Comparison",
-                        color_discrete_map={"Target Units": "#94A3B8", "Actual Units": "#EF4444"},
-                        template="plotly_white"
+                if "uptime_pct" in flagged_df.columns and "site_id" in flagged_df.columns:
+                    fig_uptime = px.bar(
+                        flagged_df,
+                        x="site_id",
+                        y="uptime_pct",
+                        color="circle",
+                        title="Site Uptime % vs SLA Target (99.5%)",
+                        template="plotly_white",
+                        hover_data=["tenant", "colocation_count", "month"]
                     )
-                    fig_bar.update_layout(margin=dict(l=20, r=20, t=40, b=20))
-                    st.plotly_chart(fig_bar, use_container_width=True)
+                    fig_uptime.add_hline(y=99.5, line_dash="dash", line_color="green", annotation_text="Contract SLA (99.5%)")
+                    fig_uptime.add_hline(y=uptime_sla_threshold, line_dash="dot", line_color="red", annotation_text=f"Breach Threshold ({uptime_sla_threshold}%)")
+                    fig_uptime.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+                    st.plotly_chart(fig_uptime, use_container_width=True)
 
             with chart_col2:
-                if "unit_deficit" in flagged_df.columns and "region" in flagged_df.columns:
-                    fig_pie = px.pie(
-                        flagged_df,
-                        names="region",
-                        values="unit_deficit",
-                        title="Sales Unit Deficit Distribution by City",
-                        color_discrete_sequence=px.colors.qualitative.Set2,
-                        hole=0.4,
+                if "energy_consumption_kwh" in flagged_df.columns and "energy_budget_kwh" in flagged_df.columns:
+                    plot_data = []
+                    for _, row in flagged_df.iterrows():
+                        label = f"{row.get('site_id', '')} ({row.get('circle', '')})"
+                        plot_data.append({"Site": label, "Type": "Actual Consumption (kWh)", "kWh": row["energy_consumption_kwh"]})
+                        plot_data.append({"Site": label, "Type": "Budgeted (kWh)", "kWh": row["energy_budget_kwh"]})
+
+                    fig_energy = px.bar(
+                        pd.DataFrame(plot_data),
+                        x="Site",
+                        y="kWh",
+                        color="Type",
+                        barmode="group",
+                        title="Energy Consumption vs Budget Comparison",
+                        color_discrete_map={"Actual Consumption (kWh)": "#EF4444", "Budgeted (kWh)": "#3B82F6"},
                         template="plotly_white"
                     )
-                    fig_pie.update_layout(margin=dict(l=20, r=20, t=40, b=20))
-                    st.plotly_chart(fig_pie, use_container_width=True)
+                    fig_energy.update_layout(margin=dict(l=20, r=20, t=40, b=20))
+                    st.plotly_chart(fig_energy, use_container_width=True)
 
             # Styled Exception Table
-            st.markdown("### 📋 Flagged Exception Records")
+            st.markdown("### 📋 Flagged Tower Exception Records")
             st.dataframe(
                 flagged_df,
                 column_config={
-                    "region": "City Store",
-                    "product": "Tech Product",
-                    "month": "Sales Month",
-                    "achievement_pct": st.column_config.NumberColumn("Achievement %", format="%.1f%%"),
-                    "target_units": st.column_config.NumberColumn("Target Units", format="%d"),
-                    "actual_units": st.column_config.NumberColumn("Actual Units", format="%d"),
-                    "unit_deficit": st.column_config.NumberColumn("Unit Deficit", format="%d")
+                    "circle": "Circle",
+                    "site_id": "Tower Site ID",
+                    "tenant": "Operator Tenant",
+                    "colocation_count": st.column_config.NumberColumn("Coloc Count", format="%d"),
+                    "target_colocations": st.column_config.NumberColumn("Target Coloc", format="%d"),
+                    "uptime_pct": st.column_config.NumberColumn("Uptime %", format="%.2f%%"),
+                    "sla_target_pct": st.column_config.NumberColumn("SLA Target", format="%.1f%%"),
+                    "energy_consumption_kwh": st.column_config.NumberColumn("Energy Actual (kWh)", format="%.1f"),
+                    "energy_budget_kwh": st.column_config.NumberColumn("Energy Budget (kWh)", format="%.1f"),
+                    "month": "Month"
                 },
                 use_container_width=True,
                 hide_index=True
@@ -339,9 +366,9 @@ def main():
             # Export Button
             csv_data = flagged_df.to_csv(index=False).encode('utf-8')
             st.download_button(
-                label="📥 Download Exception CSV Report",
+                label="📥 Export Tower Exception Report (CSV)",
                 data=csv_data,
-                file_name=f"tech_store_exceptions_{threshold_pct}pct.csv",
+                file_name=f"indus_tower_exceptions.csv",
                 mime="text/csv"
             )
 
@@ -351,35 +378,37 @@ def main():
     st.markdown("---")
     with st.expander("🎓 Technical Architecture & Interview Overview"):
         st.markdown("""
-        ### Tech Electronics Store Exception Reporting Architecture
+        ### Indus Towers AI Infrastructure Exception Reporter
 
         ```
-        [ Natural Language Business Question ] 
-                         │
-                         ▼
+        [ Natural Language Question ] 
+                     │
+                     ▼
         [ LLM NL-to-SQL Engine (llm.py) ] ◄── Few-Shot Prompting (Groq / OpenAI)
-                         │
-                         ▼
-        [ Deterministic Schema & Security Validation (validate.py) ]
-                         │
-                 ┌───────┴───────┐
-              (Passes)        (Fails)
-                 │               │
-                 ▼               ▼
-            [ Execute SQL ]   [ Self-Correction Retry (Max 2 Attempts) ]
-                 │
-                 ▼
-            [ Dynamic Threshold Exception Layer (exceptions.py) ]
-                 │
-                 ▼
-            [ Streamlit Analytics Dashboard (app.py) ]
+                     │
+                     ▼
+        [ Deterministic Schema Validation (validate.py) ]
+                     │
+             ┌───────┴───────┐
+          (Passes)        (Fails)
+             │               │
+             ▼               ▼
+        [ Execute SQL ]   [ Self-Correction Retry (Max 2 Attempts) ]
+             │
+             ▼
+        [ Multi-Vector Telecom Exception Layer (exceptions.py) ]
+             │
+             ▼
+        [ Streamlit Analytics Dashboard (app.py) ]
         ```
 
         #### Key Talking Points for Technical Interviews:
-        - **Dataset**: Tech Electronics Store tracking 5 premium items (`iPhone 15`, `MacBook Air`, `AirPods Pro`, `Samsung S24`, `Sony Headphones`) across 4 metro hubs (`Delhi`, `Mumbai`, `Bengaluru`, `Hyderabad`).
-        - **Deterministic Anti-Hallucination Layer**: Inspects SQL query tokens before execution to prevent non-existent columns/tables from running against SQLite.
-        - **Security Guards**: Rejects non-SELECT DML operations (`DELETE`, `DROP`, `UPDATE`), SQL comments, and semicolon injection.
-        - **Dynamic Exception Thresholding**: Separates statistical exception logic from SQL generation so threshold targets (`< 90%`) remain configurable in real-time.
+        - **Dataset**: Synthetic Indus Towers dataset (969 records, 60 sites across 10 circles: Delhi, Mumbai, UP-East, Punjab, Maharashtra, Karnataka, etc.).
+        - **Multi-Vector Exception Detection**:
+          1. **SLA Uptime Breaches**: Detects sites failing contract SLA (`99.5%` target).
+          2. **Colocation Shortfalls**: Identifies sites with actual tenants lower than planned capacity.
+          3. **Energy Overruns**: Flags sites exceeding budgeted monthly kWh consumption by > 10%.
+        - **Zero-Trust Anti-Hallucination**: Inspects LLM-generated SQL against the `tower_sites` schema before execution.
         """)
 
 

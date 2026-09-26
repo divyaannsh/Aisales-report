@@ -1,8 +1,8 @@
 """
-LLM Natural-Language-to-SQL module for AI Sales Exception Reporter.
+LLM Natural-Language-to-SQL module for Indus Towers AI Exception Reporter.
 
-Translates natural language business questions into SQLite SELECT queries
-using Groq (LLaMA3 / GPT-OSS) or OpenAI API for Tech Electronics Store dataset.
+Translates natural language business queries into SQLite SELECT queries over
+'tower_sites' database using Groq (LLaMA3 / GPT-OSS) or OpenAI API.
 """
 
 import os
@@ -19,17 +19,17 @@ except ImportError:
 FEW_SHOT_EXAMPLES = """
 Few-Shot Examples:
 
-Question: Which cities missed target for iPhone 15 in August 2024?
-SQL: SELECT region, product, month, target_units, actual_units FROM sales WHERE product = 'iPhone 15' AND month = '2024-08';
+Question: Which tower sites in Delhi breached SLA uptime in August 2026?
+SQL: SELECT circle, site_id, tenant, colocation_count, target_colocations, uptime_pct, sla_target_pct, energy_consumption_kwh, energy_budget_kwh, month FROM tower_sites WHERE circle = 'Delhi' AND month = '2026-08';
 
-Question: Show sales data for MacBook Air in Mumbai for July 2024.
-SQL: SELECT region, product, month, target_units, actual_units FROM sales WHERE product = 'MacBook Air' AND region = 'Mumbai' AND month = '2024-07';
+Question: Show Airtel tower sites in Mumbai with colocation shortfall.
+SQL: SELECT circle, site_id, tenant, colocation_count, target_colocations, uptime_pct, sla_target_pct, energy_consumption_kwh, energy_budget_kwh, month FROM tower_sites WHERE tenant = 'Airtel' AND circle = 'Mumbai';
 
-Question: List all product sales in Bengaluru.
-SQL: SELECT region, product, month, target_units, actual_units FROM sales WHERE region = 'Bengaluru';
+Question: List towers in UP-East over budget on energy in July 2026.
+SQL: SELECT circle, site_id, tenant, colocation_count, target_colocations, uptime_pct, sla_target_pct, energy_consumption_kwh, energy_budget_kwh, month FROM tower_sites WHERE circle = 'UP-East' AND month = '2026-07';
 
-Question: Show performance for Sony Headphones across all cities in June 2024.
-SQL: SELECT region, product, month, target_units, actual_units FROM sales WHERE product = 'Sony Headphones' AND month = '2024-06';
+Question: Show all tower sites for Reliance Jio in Karnataka.
+SQL: SELECT circle, site_id, tenant, colocation_count, target_colocations, uptime_pct, sla_target_pct, energy_consumption_kwh, energy_budget_kwh, month FROM tower_sites WHERE tenant = 'Reliance Jio' AND circle = 'Karnataka';
 """
 
 
@@ -119,53 +119,56 @@ def _offline_fallback_sql(user_prompt: str) -> str:
     """Generate SQL heuristically when running without an API key."""
     prompt_lower = user_prompt.lower()
 
-    products = ["iphone 15", "macbook air", "airpods pro", "samsung s24", "sony headphones"]
-    found_product = None
-    for p in products:
-        if p in prompt_lower:
-            if p == "iphone 15": found_product = "iPhone 15"
-            elif p == "macbook air": found_product = "MacBook Air"
-            elif p == "airpods pro": found_product = "AirPods Pro"
-            elif p == "samsung s24": found_product = "Samsung S24"
-            elif p == "sony headphones": found_product = "Sony Headphones"
+    circles = ["delhi", "mumbai", "up-east", "up-west", "punjab", "maharashtra", "rajasthan", "karnataka", "tamil nadu", "west bengal"]
+    found_circle = None
+    for c in circles:
+        if c in prompt_lower:
+            if c == "up-east": found_circle = "UP-East"
+            elif c == "up-west": found_circle = "UP-West"
+            elif c == "tamil nadu": found_circle = "Tamil Nadu"
+            elif c == "west bengal": found_circle = "West Bengal"
+            else: found_circle = c.capitalize()
             break
 
-    cities = ["delhi", "mumbai", "bengaluru", "hyderabad"]
-    found_city = None
-    for c in cities:
-        if c in prompt_lower:
-            found_city = c.capitalize()
+    tenants = ["airtel", "reliance jio", "jio", "vodafone idea", "vi", "bsnl"]
+    found_tenant = None
+    for t in tenants:
+        if t in prompt_lower:
+            if t == "airtel": found_tenant = "Airtel"
+            elif t in ["reliance jio", "jio"]: found_tenant = "Reliance Jio"
+            elif t in ["vodafone idea", "vi"]: found_tenant = "Vodafone Idea"
+            elif t == "bsnl": found_tenant = "BSNL"
             break
 
     month_map = {
-        "march": "2024-03", "april": "2024-04", "may": "2024-05",
-        "june": "2024-06", "july": "2024-07", "august": "2024-08"
+        "march": "2026-03", "april": "2026-04", "may": "2026-05",
+        "june": "2026-06", "july": "2026-07", "august": "2026-08"
     }
     found_month = next((m_code for m_name, m_code in month_map.items() if m_name in prompt_lower), None)
 
     where_clauses = []
-    if found_product:
-        where_clauses.append(f"product = '{found_product}'")
-    if found_city:
-        where_clauses.append(f"region = '{found_city}'")
+    if found_circle:
+        where_clauses.append(f"circle = '{found_circle}'")
+    if found_tenant:
+        where_clauses.append(f"tenant = '{found_tenant}'")
     if found_month:
         where_clauses.append(f"month = '{found_month}'")
 
     where_str = " WHERE " + " AND ".join(where_clauses) if where_clauses else ""
-    return f"SELECT region, product, month, target_units, actual_units FROM sales{where_str};"
+    return f"SELECT circle, site_id, tenant, colocation_count, target_colocations, uptime_pct, sla_target_pct, energy_consumption_kwh, energy_budget_kwh, month FROM tower_sites{where_str};"
 
 
 def nl_to_sql(question: str, schema: str, feedback: Optional[str] = None) -> str:
     """
-    Send natural language question to LLM to produce SQLite SELECT query.
+    Send natural language business question to LLM to produce SQLite SELECT statement for tower_sites.
     """
     system_prompt = (
-        "You are an expert SQL engineer. Convert user natural language questions into valid SQLite SELECT queries.\n"
+        "You are an expert SQL engineer. Convert user natural language questions into valid SQLite SELECT queries for 'tower_sites' table.\n"
         "RULES:\n"
         "1. Return ONLY the raw executable SQLite SELECT query. Do not add markdown formatting, markdown backticks, or explanations.\n"
-        "2. Do NOT use non-existent table names or column names. Reference ONLY columns and tables present in the schema.\n"
-        "3. Always select the relevant columns (region, product, month, target_units, actual_units) so performance can be evaluated.\n"
-        "4. Do NOT perform target exception filtering in SQL directly — select target_units and actual_units rows so the exception layer can evaluate it.\n\n"
+        "2. Do NOT use non-existent table names or column names. Reference ONLY columns and tables present in the schema (table name: tower_sites).\n"
+        "3. Always select relevant metrics (circle, site_id, tenant, colocation_count, target_colocations, uptime_pct, sla_target_pct, energy_consumption_kwh, energy_budget_kwh, month).\n"
+        "4. Do NOT filter exception thresholds directly in SQL unless explicitly asked — select site metrics rows so the exception layer can evaluate it.\n\n"
         f"Database Schema:\n{schema}\n"
         f"{FEW_SHOT_EXAMPLES}"
     )
@@ -210,6 +213,6 @@ if __name__ == "__main__":
     schema = get_schema()
     tables, cols = get_allowed_tables_and_columns()
 
-    q = "Which cities missed target for iPhone 15 in August?"
+    q = "Which tower sites in Delhi breached SLA uptime in August?"
     success, sql, msg, attempts = generate_and_validate_sql(q, schema, cols, tables)
     print(f"Question: {q}\nSuccess: {success}\nSQL: {sql}\nMessage: {msg}\nAttempts: {attempts}")
