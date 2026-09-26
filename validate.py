@@ -1,5 +1,5 @@
 """
-Validation module for AI Sales Exception Reporter.
+Validation module for Indus Towers AI Exception Reporter.
 
 Provides deterministic validation layer for LLM-generated SQL queries
 to prevent hallucinations (invalid columns/tables) and SQL injection.
@@ -28,7 +28,6 @@ STANDARD_SQL_FUNCTIONS_AND_KEYWORDS = {
 
 def _strip_string_literals(sql: str) -> str:
     """Replace single-quoted string literals in SQL with empty string to avoid false identifier matching."""
-    # Match strings enclosed in single quotes, handling escaped single quotes if any
     return re.sub(r"'(?:''|[^'])*'", "''", sql)
 
 
@@ -58,7 +57,6 @@ def validate_sql(
         return False, "SQL comments ('--', '/*', '#') are strictly forbidden to prevent injection."
 
     # 2. Reject multiple statements separated by ';'
-    # Remove trailing semicolon if present
     trimmed_sql = clean_sql.rstrip(";").strip()
     if ";" in trimmed_sql:
         return False, "Multiple SQL statements separated by ';' are not allowed."
@@ -75,7 +73,6 @@ def validate_sql(
         return False, f"Forbidden SQL operation detected: {', '.join(forbidden_found)}. Only SELECT queries are allowed."
 
     # 5. Schema verification: Check tables and columns
-    # Normalize schema names for case-insensitive matching
     allowed_tables_lower = {t.lower() for t in allowed_tables}
     allowed_cols_lower = {c.lower() for c in allowed_columns}
 
@@ -98,7 +95,7 @@ def validate_sql(
     # Strip single-quoted string literals before extracting identifier words
     sql_without_strings = _strip_string_literals(trimmed_sql)
 
-    # Extract word tokens (identifiers, column names, aliases)
+    # Extract word tokens
     word_tokens = re.findall(r"\b[a-zA-Z_][a-zA-Z0-9_]*\b", sql_without_strings)
 
     # Collect aliases created with 'AS alias_name'
@@ -112,51 +109,27 @@ def validate_sql(
         tok_lower = token.lower()
         tok_upper = token.upper()
 
-        # Skip standard keywords & functions
         if tok_upper in STANDARD_SQL_FUNCTIONS_AND_KEYWORDS or tok_upper in FORBIDDEN_KEYWORDS:
             continue
 
-        # Skip table names
         if tok_lower in allowed_tables_lower:
             continue
 
-        # Skip aliases created in query
         if tok_lower in alias_names:
             continue
 
-        # Skip string literals or SQLite default column 'id' if permitted
         if tok_lower == "id":
             continue
 
-        # If token is not in allowed columns, flag it!
         if tok_lower not in allowed_cols_lower:
             invalid_cols.append(token)
 
     if invalid_cols:
         unique_invalid = sorted(list(set(invalid_cols)))
+        tbl_display = allowed_tables[0] if allowed_tables else "tower_sites"
         return False, (
             f"Your query used invalid column(s): {', '.join(unique_invalid)}. "
-            f"The valid columns in table 'sales' are: {', '.join(allowed_columns)}."
+            f"The valid columns in table '{tbl_display}' are: {', '.join(allowed_columns)}."
         )
 
     return True, "Query validation passed successfully."
-
-
-if __name__ == "__main__":
-    allowed_cols = ["region", "product", "month", "target_units", "actual_units"]
-    allowed_tbls = ["sales"]
-
-    # Test cases
-    test_cases = [
-        ("SELECT region, product, SUM(actual_units) FROM sales WHERE month = '2024-08' GROUP BY region, product", True),
-        ("SELECT region, product, month, target_units, actual_units FROM sales WHERE product = 'Chips' AND month = '2024-08';", True),
-        ("SELECT region, revenue FROM sales", False),  # invalid column revenue
-        ("DELETE FROM sales WHERE region = 'North'", False),  # DML operation
-        ("SELECT * FROM sales; DROP TABLE sales;", False),  # Multiple statements
-        ("SELECT region, product FROM sales -- comment", False),  # Comment injection
-        ("SELECT region, unknown_col FROM unknown_table", False),  # invalid table & col
-    ]
-
-    for sql, expected in test_cases:
-        valid, msg = validate_sql(sql, allowed_cols, allowed_tbls)
-        print(f"SQL: {sql}\nValid: {valid} (Expected: {expected})\nMsg: {msg}\n" + "-"*50)
