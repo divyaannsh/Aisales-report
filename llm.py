@@ -1,5 +1,5 @@
 """
-LLM Natural-Language-to-SQL module for Indus Towers AI Exception Reporter.
+LLM Natural-Language-to-SQL module for TowerPulse AI Exception Reporter.
 
 Translates natural language business queries into SQLite SELECT queries over
 'tower_sites' database using Groq (LLaMA3 / GPT-OSS) or OpenAI API.
@@ -340,7 +340,7 @@ def generate_executive_summary(
     circles_str = f"Most affected circles: {', '.join(top_circles[:3])}." if top_circles else ""
 
     system_prompt = (
-        "You are a senior telecom infrastructure analyst at a tower company (similar to Indus Towers). "
+        "You are a senior telecom infrastructure analyst at a tower company. "
         "Write a concise 2-3 sentence executive summary of an exception report for a business leader. "
         "Be direct, data-driven, and action-oriented. Do not use bullet points. Do not add headers. "
         "Speak like a COO briefing the board. Use ₹ for currency if cost is mentioned."

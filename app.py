@@ -1,6 +1,6 @@
 """
 TowerPulse AI - Telecom Infrastructure Exception Reporter
-Indus Towers Edition — Built for Executive Insights & Automated Operations
+TowerPulse AI — Built for Executive Insights & Automated Operations
 """
 
 import os
@@ -37,7 +37,7 @@ from exceptions import flag_exceptions, diagnose_root_cause_and_sop
 
 # ─── Page Configuration ───────────────────────────────────────────────────────
 st.set_page_config(
-    page_title="TowerPulse AI | Indus Towers Exception Intelligence",
+    page_title="TowerPulse AI | Tower Exception Intelligence",
     page_icon="🗼",
     layout="wide",
     initial_sidebar_state="expanded"
@@ -488,7 +488,7 @@ def render_header():
             <div class="tp-logo-glow">🗼</div>
             <div>
                 <h1 class="tp-brand-title">TowerPulse AI</h1>
-                <p class="tp-brand-subtitle">Indus Towers Exception Intelligence Engine · Natural Language &rarr; Schema Validation &rarr; Automated Action</p>
+                <p class="tp-brand-subtitle">TowerPulse Exception Intelligence Engine · Natural Language &rarr; Schema Validation &rarr; Automated Action</p>
             </div>
         </div>
         <div class="tp-pill-group">
@@ -736,7 +736,7 @@ def render_fleet_baseline_overview():
         uptime_delta = f"{avg_uptime - 99.5:.2f}% vs SLA"
         st.metric("Fleet Average Uptime", f"{avg_uptime:.2f}%", delta=uptime_delta, delta_color="inverse")
     with k3:
-        st.metric("Average Tenancy Ratio", f"{avg_coloc:.2f}x", delta="Indus Benchmark: ~1.62x", delta_color="normal")
+        st.metric("Average Tenancy Ratio", f"{avg_coloc:.2f}x", delta="Industry Benchmark: ~1.62x", delta_color="normal")
     with k4:
         sla_breach_count = len(fleet_df[fleet_df["uptime_pct"] < 95.0])
         st.metric("Total SLA Breaches (<95%)", f"{sla_breach_count}", delta="Requires Attention", delta_color="inverse")
@@ -874,7 +874,7 @@ def main():
         st.markdown("<p style='font-size:0.75rem;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;'>🗄️ Dataset Operations</p>", unsafe_allow_html=True)
         tables, allowed_cols = get_allowed_tables_and_columns()
         st.caption(f"**Table:** `{tables[0]}` (575 records across 60 sites, 10 circles, 6 months, multiple tenants per site)")
-        st.caption("🧪 **Data Note:** Synthetic stress-test data calibrated to Indus KPIs (~1.62x Tenancy, ~99.9% Uptime).")
+        st.caption("🧪 **Data Note:** Synthetic stress-test data calibrated to industry KPIs (~1.62x Tenancy, ~99.9% Uptime).")
 
         if st.button("🔄 Reload & Reseed Database", width="stretch"):
             reset_and_reseed_db()
@@ -1156,7 +1156,7 @@ def main():
                         <span>💬</span> Microsoft Teams / Outlook Operations Brief Preview
                     </div>
                     <div style="font-size: 0.9rem; line-height: 1.6; color: #E2E8F0;">
-                        <b>TO:</b> Circle Operations Heads &amp; Indus Central NOC (Gurgaon)<br>
+                        <b>TO:</b> Circle Operations Heads &amp; Central NOC (Gurgaon)<br>
                         <b>SUBJECT:</b> {status_header}<br>
                         <hr style="border-color: #4F566B; margin: 0.6rem 0;">
                         <b>Executive Summary:</b> {summary}<br><br>
@@ -1166,8 +1166,8 @@ def main():
                     </div>
                 </div>
                 """, unsafe_allow_html=True)
-                if st.button("🚀 Send Webhook Payload to #indus-noc-alerts", key="send_webhook_btn"):
-                    st.toast("✅ Webhook payload dispatched to Microsoft Teams #indus-noc-alerts channel!", icon="🔔")
+                if st.button("🚀 Send Webhook Payload to #noc-alerts", key="send_webhook_btn"):
+                    st.toast("✅ Webhook payload dispatched to Microsoft Teams #noc-alerts channel!", icon="🔔")
                     st.success("Notification delivered to Circle Leads and Central NOC successfully.")
 
         # ─────────────────────────────────────────────────────────
@@ -1283,7 +1283,7 @@ def main():
     # INTERVIEW & ARCHITECTURE SHOWCASE
     # ---------------------------------------------------------
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-    with st.expander("🎓 Technical Architecture & Indus Towers Interview Talking Points"):
+    with st.expander("🎓 Technical Architecture & Interview Talking Points"):
         st.markdown("""
         ### TowerPulse AI — System Architecture Blueprint
 
@@ -1321,7 +1321,7 @@ def main():
         #### Key Talking Points for Interview:
         - **Proactive Exception Spotting**: Replaces manual slicing across Power BI filters with a single natural language question.
         - **Zero Number Invention**: The LLM NEVER invents metrics or numbers; all metrics are computed directly by SQL on the underlying dataset.
-        - **Calibrated to Indus Realities**: Calibrated synthetic stress-test data mirroring ~1.62x tenancy, ~99.9% uptime benchmark, and realistic failure outliers.
+        - **Calibrated to Industry Benchmarks**: Calibrated synthetic stress-test data mirroring ~1.62x tenancy, ~99.9% uptime benchmark, and realistic failure outliers.
         - **Prescriptive Next Steps**: Classifies operational failure patterns (grid, fiber cut, cooling) with standard field SOP actions.
         - **Team Collaboration Loop**: One-click generation of structured morning briefings for Circle Heads and NOC engineers.
         """)

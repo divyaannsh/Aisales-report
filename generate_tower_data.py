@@ -1,6 +1,6 @@
 """
 Script to generate realistic synthetic Telecom Tower Infrastructure Dataset.
-Calibrated to public Indus Towers benchmark KPIs:
+Calibrated to public telecom industry benchmark KPIs:
 - Average tenancy ratio: ~1.62x (majority 1 or 2 tenants, few with 3)
 - Average network uptime: ~99.9% (most rows 99.5-99.99%, ~4% below 99.5%, ~1% critical breach <95%)
 - Energy overrun (>10% of budget): ~8% of records (reflecting ~4.5% fleet energy under-recovery)
@@ -34,7 +34,7 @@ MONTHS = ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"]
 
 def generate_tower_dataset(num_sites_per_circle: int = 6) -> pd.DataFrame:
     """
-    Generate synthetic telecom tower infrastructure dataset calibrated to Indus Towers KPIs.
+    Generate synthetic telecom tower infrastructure dataset calibrated to industry KPIs.
     
     Target Distributions:
     - 60 unique sites across 10 circles
@@ -156,8 +156,8 @@ if __name__ == "__main__":
     coloc_shortfalls = (df['colocation_count'] < df['target_colocations']).sum()
     energy_overruns = (df['energy_consumption_kwh'] > df['energy_budget_kwh'] * 1.10).sum()
 
-    print(f"Average Tenancy Ratio (per site): {avg_tenancy:.2f}x (Indus benchmark: ~1.62x)")
-    print(f"Average Fleet Uptime: {avg_uptime:.3f}% (Indus benchmark: ~99.9%)")
+    print(f"Average Tenancy Ratio (per site): {avg_tenancy:.2f}x (Industry benchmark: ~1.62x)")
+    print(f"Average Fleet Uptime: {avg_uptime:.3f}% (Industry benchmark: ~99.9%)")
     print(f"Critical SLA Breaches (<95%): {sla_breaches_95} rows ({sla_breaches_95/len(df)*100:.2f}%)")
     print(f"SLA Breaches (<99.5%): {sla_breaches_995} rows ({sla_breaches_995/len(df)*100:.2f}%)")
     print(f"Colocation Shortfalls (< Target): {coloc_shortfalls} rows ({coloc_shortfalls/len(df)*100:.2f}%)")

@@ -1,5 +1,5 @@
 """
-Database module for Indus Towers AI Exception Reporter.
+Database module for TowerPulse AI Exception Reporter.
 
 Handles SQLite database creation from tower_sites.csv, schema extraction,
 read-only query execution, and query audit logging.
@@ -236,7 +236,7 @@ def get_recent_audit_logs(limit: int = 15, db_path: str = DB_PATH) -> pd.DataFra
 
 if __name__ == "__main__":
     init_db()
-    print("Indus Towers SQLite Database initialized successfully.")
+    print("TowerPulse SQLite Database initialized successfully.")
     print("Read-only test:")
     df_test = execute_query("SELECT COUNT(*) AS total_rows FROM tower_sites;", read_only=True)
     print("Result:", df_test.to_dict(orient="records"))

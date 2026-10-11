@@ -96,7 +96,7 @@ Below is the verified test log across all 3 independent evaluation runs:
 2. **Iterative Test-Set Tuning:** System prompt instructions and validator rules were iteratively refined using failure feedback from this same 25-question set (risk of benchmark overfitting).
 3. **Trivially Passing Test Cases (Q2 & Q6):** Both Q2 and Q6 return 0 rows under Gold SQL on this dataset; any query returning 0 rows would pass trivially.
 4. **Adversarial Validator Reach:** 0 of 15 adversarial attempts reached the validator because the LLM refused or sanitized them at the prompt layer; validator coverage is proven independently by `test_validator.py` (25/25 unit tests).
-5. **Synthetic Dataset:** 575 records (60 sites, 10 circles, 6 months, multiple tenants per site) calibrated to Indus KPIs (~1.62x tenancy, ~99.9% uptime), not live production data.
+5. **Synthetic Dataset:** 575 records (60 sites, 10 circles, 6 months, multiple tenants per site) calibrated to industry KPIs (~1.62x tenancy, ~99.9% uptime), not live production data.
 
 ---
 

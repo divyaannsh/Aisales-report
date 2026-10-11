@@ -1,5 +1,5 @@
 """
-Daily Exception Digest Generator for Indus Towers Operations.
+Daily Exception Digest Generator for TowerPulse Operations.
 Deterministic CLI script (zero LLM dependency) that extracts daily/monthly
 infrastructure exceptions from the database and generates an executive digest.
 
@@ -93,7 +93,7 @@ def generate_daily_digest(uptime_threshold: float = 95.0, energy_overrun_pct: fl
     total_exceptions = len(master_exceptions_df)
     total_energy_overrun_kwh = energy_df["overrun_kwh"].sum() if not energy_df.empty else 0.0
 
-    md_content = f"""# 🗼 Indus Towers — Daily Operations Exception Digest
+    md_content = f"""# 🗼 TowerPulse AI — Daily Operations Exception Digest
 **Report Date:** {today_str} | **Reporting Period:** {latest_month} | **Source:** Local SQL Database
 
 ---

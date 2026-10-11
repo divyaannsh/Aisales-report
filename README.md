@@ -1,6 +1,6 @@
 # TowerPulse AI 🗼
 
-> A working proof-of-concept that replaces manual Power BI exception reporting for telecom tower infrastructure with a natural-language AI query engine — built specifically around Indus Towers' operational KPIs.
+> A working proof-of-concept that replaces manual Power BI exception reporting for telecom tower infrastructure with a natural-language AI query engine — built around standard telecom operational KPIs.
 
 ---
 
@@ -84,7 +84,7 @@ Dashboard shows results + AI summary + ₹ business impact
 
 ## Dataset
 
-Synthetic data modelled on Indus Towers' operational structure:
+Synthetic data modelled on standard telecom tower operational structure:
 
 - **575 records (60 sites, 10 circles, 6 months, multiple tenants per site)**
 - Circles: Delhi, Mumbai, UP-East, UP-West, Punjab, Maharashtra, Rajasthan, Karnataka, Tamil Nadu, West Bengal
@@ -148,7 +148,7 @@ Validation rejects the LLM's generated SQL and retries. Numbers only come from t
 
 ---
 
-## How this scales to a real Indus Towers setup
+## How this scales to a real production setup
 
 This project is the **base layer**. The planned production architecture adds:
 
@@ -226,7 +226,7 @@ python digest.py
 | `test_validator.py` | Standalone deterministic unit tests (25 test cases, 0 LLM calls) for validator rules |
 | `eval_questions.json` | Test suite of 20 operational + 5 adversarial benchmark questions |
 | `exceptions.py` | Flags SLA breaches, colocation shortfalls, energy overruns + Prescriptive SOP engine |
-| `generate_tower_data.py` | Creates synthetic telecom dataset calibrated to Indus KPIs (~1.62x tenancy, ~99.9% uptime) |
+| `generate_tower_data.py` | Creates synthetic telecom dataset calibrated to industry KPIs (~1.62x tenancy, ~99.9% uptime) |
 | `tower_sites.csv` | The calibrated dataset (575 records across 60 sites and 10 circles) |
 
 

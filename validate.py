@@ -1,5 +1,5 @@
 """
-Validation module for Indus Towers AI Exception Reporter.
+Validation module for TowerPulse AI Exception Reporter.
 
 Provides deterministic validation layer for LLM-generated SQL queries
 to prevent hallucinations (invalid columns/tables) and SQL injection.

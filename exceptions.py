@@ -1,5 +1,5 @@
 """
-Exception detection module for Indus Towers AI Exception Reporter.
+Exception detection module for TowerPulse AI Exception Reporter.
 
 Flags telecom tower infrastructure exceptions across 3 business vectors:
 1. SLA Uptime Breaches (e.g., Uptime < 95.0% or < 99.5% contract SLA)
