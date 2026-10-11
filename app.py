@@ -11,15 +11,22 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 
-from db import (
-    init_db,
-    get_schema,
-    get_allowed_tables_and_columns,
-    execute_query,
-    reset_and_reseed_db,
-    log_query_audit,
-    get_recent_audit_logs,
-)
+import importlib
+import db
+
+try:
+    importlib.reload(db)
+except Exception:
+    pass
+
+init_db = getattr(db, "init_db")
+get_schema = getattr(db, "get_schema")
+get_allowed_tables_and_columns = getattr(db, "get_allowed_tables_and_columns")
+execute_query = getattr(db, "execute_query")
+reset_and_reseed_db = getattr(db, "reset_and_reseed_db")
+log_query_audit = getattr(db, "log_query_audit", lambda *args, **kwargs: None)
+get_recent_audit_logs = getattr(db, "get_recent_audit_logs", lambda *args, **kwargs: pd.DataFrame())
+
 from llm import (
     generate_and_validate_sql,
     generate_executive_summary,
