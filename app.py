@@ -734,7 +734,7 @@ def render_fleet_baseline_overview():
     # 4 Command Center KPI Cards
     k1, k2, k3, k4 = st.columns(4)
     with k1:
-        st.metric("Total Monitored Sites", f"{total_sites} Sites", delta=f"{total_records} Site-Months")
+        st.metric("Total Monitored Sites", f"{total_sites} Sites", delta=f"{total_records} Records")
     with k2:
         uptime_delta = f"{avg_uptime - 99.5:.2f}% vs SLA"
         st.metric("Fleet Average Uptime", f"{avg_uptime:.2f}%", delta=uptime_delta, delta_color="inverse")
@@ -869,14 +869,14 @@ def main():
         st.markdown("<p style='font-size:0.75rem;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;'>🛡️ Security & Validation Guardrails</p>", unsafe_allow_html=True)
         st.info(
             "**Schema-Validated Queries:**\n"
-            "Query AST is verified before execution. LLM never invents numbers; metrics are computed by SQL on the local dataset."
+            "Query token-level validation (sqlparse + EXPLAIN) is verified before execution. LLM never invents numbers; metrics are computed by SQL on the local dataset."
         )
 
         st.markdown("<hr style='border-color:#1E293B;margin:1.2rem 0;'>", unsafe_allow_html=True)
 
         st.markdown("<p style='font-size:0.75rem;font-weight:600;color:#94A3B8;text-transform:uppercase;letter-spacing:0.06em;margin-bottom:0.4rem;'>🗄️ Dataset Operations</p>", unsafe_allow_html=True)
         tables, allowed_cols = get_allowed_tables_and_columns()
-        st.caption(f"**Table:** `{tables[0]}` (575 site-months across 60 sites)")
+        st.caption(f"**Table:** `{tables[0]}` (575 records across 60 sites, 10 circles, 6 months, multiple tenants per site)")
         st.caption("🧪 **Data Note:** Synthetic stress-test data calibrated to Indus KPIs (~1.62x Tenancy, ~99.9% Uptime).")
 
         if st.button("🔄 Reload & Reseed Database", width="stretch"):
@@ -941,7 +941,7 @@ def main():
         tables, allowed_cols = get_allowed_tables_and_columns()
 
         t0 = time.time()
-        with st.spinner("🤖 Translating natural language query & verifying AST guardrails..."):
+        with st.spinner("🤖 Translating natural language query & verifying token-level guardrails..."):
             success, generated_sql, status_msg, attempts, finish_reason = generate_and_validate_sql(
                 user_input, schema, allowed_cols, tables
             )
@@ -1243,7 +1243,7 @@ def main():
         # TAB 3: SCHEMA VALIDATION & GUARDRAIL AUDIT
         # ─────────────────────────────────────────────────────────
         with tab_guardrail:
-            st.markdown("<p style='font-size:0.75rem;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin:0.8rem 0 0.6rem 0;'>Deterministic Query & AST Security Audit:</p>", unsafe_allow_html=True)
+            st.markdown("<p style='font-size:0.75rem;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:0.08em;margin:0.8rem 0 0.6rem 0;'>Deterministic Query & Token-Level Security Audit:</p>", unsafe_allow_html=True)
             p_col1, p_col2 = st.columns([3, 2])
 
             with p_col1:
@@ -1301,7 +1301,7 @@ def main():
                             │
                             ▼
         [ 3. DETERMINISTIC GUARDRAILS (validate.py) ]
-          ├── Read-Only AST Parser (Blocks DROP, INSERT, UPDATE)
+          ├── Token-Level Parser (sqlparse + EXPLAIN; Blocks DROP, INSERT, UPDATE)
           ├── Whitelist Table & Column Verifier
           └── Schema Boundary Check (Rejects hallucinated columns)
                             │

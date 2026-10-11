@@ -6,3 +6,6 @@ __pycache__/
 audit_log.jsonl
 digest_*.md
 digest_exceptions_*.csv
+*.mpeg
+*.mp3
+*.wav

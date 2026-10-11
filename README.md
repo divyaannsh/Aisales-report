@@ -60,7 +60,7 @@ Dashboard shows results + AI summary + ₹ business impact
                     Pass   │   Fail → retry (max 2x) → block
                            │
                     ┌──────▼──────┐
-                    │  SQLite DB  │  (tower_sites — 969 rows)
+                    │  SQLite DB  │  (tower_sites — 575 records)
                     └──────┬──────┘
                            │
               ┌────────────▼──────────────────────┐
@@ -86,7 +86,7 @@ Dashboard shows results + AI summary + ₹ business impact
 
 Synthetic data modelled on Indus Towers' operational structure:
 
-- **969 records** across **60 tower sites**, **10 circles**, **6 months** (Mar–Aug 2026)
+- **575 records (60 sites, 10 circles, 6 months, multiple tenants per site)**
 - Circles: Delhi, Mumbai, UP-East, UP-West, Punjab, Maharashtra, Rajasthan, Karnataka, Tamil Nadu, West Bengal
 - Tenants: Airtel, Reliance Jio, Vodafone Idea, BSNL
 - KPIs: uptime %, SLA target, colocation count vs target, energy consumption vs budget
@@ -184,10 +184,12 @@ To measure Text-to-SQL reliability honestly without hand-waving, the project inc
 - **5 Adversarial Security Tests:** DDL/DML mutations (`DELETE`, `DROP`, `UPDATE`), comment injection (`--`), and hallucinated columns (`revenue`).
 
 ### Benchmark Results
-- **Text-to-SQL Semantic Accuracy:** **75%–80%** (compares generated SQL result set directly against hand-written Gold SQL).
-- **Adversarial Block Rate:** **100%** (all mutations and injection attempts deterministically blocked).
+- **Strict SQL Semantic Accuracy:** **86.7% average** (Run 1: 85.0%, Run 2: 85.0%, Run 3: 90.0% against hand-written Gold SQL).
+- **Adversarial Safety Rate:** **100% neutralized** (12/15 refused upfront via `UNSUPPORTED:`, 3/15 sanitized to safe SELECT; 0 mutations executed).
+- **Query Latency:** **Median: ~2.0s (1,969 ms)**, **P95: ~8.4s** on `openai/gpt-oss-120b` (`reasoning_effort="low"`).
+- **Flakiness:** **4.0%** (1 of 25 queries varied across 3 independent runs).
 - **Dual-Layer Security:** 
-  1. AST inspection in `validate.py` blocks non-SELECT statements and unapproved columns.
+  1. Token-level validation (`validate.py` via `sqlparse` + `EXPLAIN`) blocks non-SELECT statements, dangling clauses, and unapproved columns.
   2. Operating system-level read-only mode (`sqlite3 file:sales.db?mode=ro` in `db.py`) blocks writes at the SQLite C-engine level.
 - **Query Audit Logging:** Every query, generated SQL, validation status, rows returned, and execution latency is automatically recorded in both SQLite (`query_audit_log`) and `audit_log.jsonl`.
 
@@ -217,13 +219,14 @@ python digest.py
 |---|---|
 | `app.py` | Streamlit command center — GIS map, tabs, What-If sandbox, Teams dispatcher |
 | `llm.py` | Converts plain English to SQL using Groq/OpenAI + Executive Summary generator |
-| `validate.py` | Deterministic AST validator blocking unsafe SQL and hallucinated columns |
+| `validate.py` | Deterministic token-level validator (sqlparse + EXPLAIN) blocking unsafe SQL and hallucinated columns |
 | `db.py` | SQLite setup, read-only connection (`mode=ro`), and query audit logging |
 | `digest.py` | Deterministic daily exception digest CLI (Markdown + CSV export) |
-| `eval.py` | 25-question benchmark measuring Text-to-SQL accuracy and security |
+| `eval.py` | 25-question tri-run benchmark measuring Text-to-SQL accuracy, flakiness, and security |
+| `test_validator.py` | Standalone deterministic unit tests (25 test cases, 0 LLM calls) for validator rules |
 | `eval_questions.json` | Test suite of 20 operational + 5 adversarial benchmark questions |
 | `exceptions.py` | Flags SLA breaches, colocation shortfalls, energy overruns + Prescriptive SOP engine |
 | `generate_tower_data.py` | Creates synthetic telecom dataset calibrated to Indus KPIs (~1.62x tenancy, ~99.9% uptime) |
-| `tower_sites.csv` | The calibrated dataset (575 site-months across 60 sites and 10 circles) |
+| `tower_sites.csv` | The calibrated dataset (575 records across 60 sites and 10 circles) |
 
 
