@@ -207,6 +207,74 @@ def generate_and_validate_sql(
         return False, sql_retry, f"Validation Failed Twice: {err_msg_retry}", 2
 
 
+def generate_executive_summary(
+    question: str,
+    flagged_count: int,
+    total_count: int,
+    exception_type: str,
+    top_circles: list,
+    avg_uptime: Optional[float],
+    energy_overrun_kwh: Optional[float]
+) -> str:
+    """
+    Generate a concise executive-level AI summary of flagged tower exceptions.
+
+    Parameters:
+        question: Original natural language question from the user.
+        flagged_count: Number of records flagged as exceptions.
+        total_count: Total records evaluated.
+        exception_type: The exception filter category applied.
+        top_circles: List of top circles with most exceptions.
+        avg_uptime: Average uptime % of flagged records (None if not applicable).
+        energy_overrun_kwh: Total energy variance kWh of flagged records (None if not applicable).
+
+    Returns:
+        A 2-3 sentence executive summary string.
+    """
+    if flagged_count == 0:
+        return "✅ No exceptions detected in the queried dataset — all tower sites are operating within defined thresholds."
+
+    uptime_str = f"Average uptime of flagged sites: {avg_uptime:.2f}%." if avg_uptime is not None else ""
+    energy_str = f"Total excess energy consumption: {energy_overrun_kwh:,.0f} kWh above budget." if energy_overrun_kwh is not None else ""
+    circles_str = f"Most affected circles: {', '.join(top_circles[:3])}." if top_circles else ""
+
+    system_prompt = (
+        "You are a senior telecom infrastructure analyst at a tower company (similar to Indus Towers). "
+        "Write a concise 2-3 sentence executive summary of an exception report for a business leader. "
+        "Be direct, data-driven, and action-oriented. Do not use bullet points. Do not add headers. "
+        "Speak like a COO briefing the board. Use ₹ for currency if cost is mentioned."
+    )
+
+    user_prompt = (
+        f"Original query: '{question}'\n"
+        f"Exception category: {exception_type}\n"
+        f"Records evaluated: {total_count}\n"
+        f"Exceptions flagged: {flagged_count} ({(flagged_count/total_count*100):.1f}% of evaluated records)\n"
+        f"{uptime_str}\n"
+        f"{energy_str}\n"
+        f"{circles_str}\n"
+        "Write the executive summary now:"
+    )
+
+    try:
+        summary = _call_llm_api(system_prompt, user_prompt)
+        return summary.strip()
+    except Exception:
+        # Graceful offline fallback
+        pct = (flagged_count / total_count * 100) if total_count > 0 else 0
+        parts = [
+            f"Out of {total_count} evaluated tower records, {flagged_count} ({pct:.1f}%) were flagged as {exception_type} exceptions."
+        ]
+        if circles_str:
+            parts.append(circles_str)
+        if uptime_str:
+            parts.append(uptime_str)
+        if energy_str:
+            parts.append(energy_str)
+        parts.append("Immediate review and remediation action is recommended for affected sites.")
+        return " ".join(parts)
+
+
 if __name__ == "__main__":
     from db import get_schema, get_allowed_tables_and_columns
 

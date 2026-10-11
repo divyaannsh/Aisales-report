@@ -1,8 +1,9 @@
 """
-Script to generate realistic synthetic Telecom Tower Infrastructure Dataset (Indus Towers style).
-
-Outputs 'tower_sites.csv' with 360+ rows across 10 circles, 60 unique tower sites,
-6 months of metrics (2026-03 to 2026-08), and realistic exception distributions.
+Script to generate realistic synthetic Telecom Tower Infrastructure Dataset.
+Calibrated to public Indus Towers benchmark KPIs:
+- Average tenancy ratio: ~1.62x (majority 1 or 2 tenants, few with 3)
+- Average network uptime: ~99.9% (most rows 99.5-99.99%, ~4% below 99.5%, ~1% critical breach <95%)
+- Energy overrun (>10% of budget): ~8% of records (reflecting ~4.5% fleet energy under-recovery)
 """
 
 import os
@@ -10,7 +11,7 @@ import random
 import numpy as np
 import pandas as pd
 
-# Set fixed random seed for 100% reproducible demo data
+# Fixed seed for 100% reproducible calibration
 np.random.seed(42)
 random.seed(42)
 
@@ -27,36 +28,41 @@ CIRCLES = [
     ("West Bengal", "WB")
 ]
 
-TENANTS_POOL = ["Airtel", "Reliance Jio", "Vodafone Idea"]
+TENANTS_POOL = ["Airtel", "Reliance Jio", "Vodafone Idea", "BSNL"]
 MONTHS = ["2026-03", "2026-04", "2026-05", "2026-06", "2026-07", "2026-08"]
 
 
 def generate_tower_dataset(num_sites_per_circle: int = 6) -> pd.DataFrame:
     """
-    Generate synthetic telecom tower infrastructure dataset.
-
-    Parameters:
-        num_sites_per_circle: Number of unique tower sites per circle (default 6 * 10 = 60 sites).
-
-    Returns:
-        pd.DataFrame containing generated tower_sites metrics.
+    Generate synthetic telecom tower infrastructure dataset calibrated to Indus Towers KPIs.
+    
+    Target Distributions:
+    - 60 unique sites across 10 circles
+    - Tenancy distribution: ~48% 1-tenant, ~42% 2-tenant, ~10% 3-tenant (Mean: ~1.62x)
+    - Uptime: ~95% between 99.50% - 99.99%, ~4% between 95.0% - 99.49%, ~1% < 95.0%
+    - Energy Overruns (>10% budget): ~8% of records
     """
     sites = []
-
-    # 1. Generate 60 unique sites
     site_counter = 101
+
+    # Exactly 60 sites: 28 sites target=1, 26 sites target=2, 6 sites target=3 (Average target = 1.63x)
+    target_pattern = [1] * 28 + [2] * 26 + [3] * 6
+    random.shuffle(target_pattern)
+
+    idx = 0
     for circle_name, circle_code in CIRCLES:
         for _ in range(num_sites_per_circle):
             site_id = f"TWR-{circle_code}-{site_counter:04d}"
-            site_counter += 13  # Incremental realistic site ID numbering
+            site_counter += 13
 
-            # Base properties for the site
-            target_colocations = random.choice([2, 3, 3, 4])
-            base_budget_kwh = random.randint(1000, 2200)
+            target_colocations = target_pattern[idx]
+            idx += 1
+
+            base_budget_kwh = random.randint(1100, 1900)
             
-            # Site characteristics (e.g. 15% faulty power grid, 15% capacity bottleneck)
-            is_power_faulty = (random.random() < 0.15)
-            is_underperforming_coloc = (random.random() < 0.18)
+            # Site characteristics: 8% with chronic power grid volatility, 12% with tenancy expansion gap
+            has_grid_volatility = (random.random() < 0.08)
+            has_coloc_gap = (target_colocations > 1) and (random.random() < 0.15)
 
             sites.append({
                 "circle": circle_name,
@@ -64,50 +70,52 @@ def generate_tower_dataset(num_sites_per_circle: int = 6) -> pd.DataFrame:
                 "site_id": site_id,
                 "target_colocations": target_colocations,
                 "base_budget_kwh": base_budget_kwh,
-                "is_power_faulty": is_power_faulty,
-                "is_underperforming_coloc": is_underperforming_coloc
+                "has_grid_volatility": has_grid_volatility,
+                "has_coloc_gap": has_coloc_gap
             })
 
     rows = []
 
-    # 2. Generate monthly tenant-level metrics for 6 months
+    # Generate monthly tenant-level metrics for 6 months
     for month in MONTHS:
         for s in sites:
-            # Actual colocation count calculation
-            if s["is_underperforming_coloc"] and random.random() < 0.70:
-                coloc_count = max(1, s["target_colocations"] - random.choice([1, 2]))
+            # Colocation count per site-month
+            if s["has_coloc_gap"] and random.random() < 0.65:
+                # Actual is 1 less than target
+                coloc_count = max(1, s["target_colocations"] - 1)
             else:
                 coloc_count = s["target_colocations"]
 
             # Select tenants present at this tower site
-            active_tenants = random.sample(TENANTS_POOL, min(coloc_count, len(TENANTS_POOL)))
-
-            # If colocation count > len(TENANTS_POOL), append extra operator instance or regional player
-            if coloc_count > len(TENANTS_POOL):
+            active_tenants = random.sample(TENANTS_POOL[:3], min(coloc_count, 3))
+            if coloc_count > 3:
                 active_tenants.append("BSNL")
 
-            # Energy budget for the site
-            energy_budget = float(s["base_budget_kwh"] + random.randint(-50, 50))
+            # Energy budget
+            energy_budget = float(s["base_budget_kwh"] + random.randint(-40, 40))
 
-            # Energy consumption for the site
-            if s["is_power_faulty"] and random.random() < 0.75:
-                # Energy overrun by 12% to 35%
-                overrun_factor = random.uniform(1.12, 1.35)
+            # Energy consumption: ~8% rows have >10% overrun
+            is_energy_overrun = s["has_grid_volatility"] or (random.random() < 0.065)
+            if is_energy_overrun:
+                overrun_factor = random.uniform(1.11, 1.28)
                 energy_consumption = round(energy_budget * overrun_factor, 1)
             else:
-                # Normal variation 88% to 104% of budget
-                normal_factor = random.uniform(0.88, 1.04)
+                normal_factor = random.uniform(0.92, 1.05)
                 energy_consumption = round(energy_budget * normal_factor, 1)
 
-            # Generate row per tenant for this site and month
+            # Generate row per active tenant on this site
             for tenant in active_tenants:
-                # Uptime percentage logic (approx 8-10% SLA breaches below 95.0%)
-                is_sla_breach = (random.random() < 0.09) or (s["is_power_faulty"] and random.random() < 0.40)
-                
-                if is_sla_breach:
-                    uptime = round(random.uniform(91.2, 94.8), 2)
-                else:
-                    uptime = round(random.uniform(97.2, 99.9), 2)
+                # Uptime distribution:
+                # ~1.0% critical breach (<95.0%)
+                # ~4.0% SLA breach (95.0% - 99.49%)
+                # ~95.0% compliant (99.50% - 99.99%)
+                r_uptime = random.random()
+                if r_uptime < 0.012:  # ~1.2% critical breach
+                    uptime = round(random.uniform(91.5, 94.8), 2)
+                elif r_uptime < 0.052:  # ~4.0% breach below SLA
+                    uptime = round(random.uniform(95.1, 99.4), 2)
+                else:  # ~94.8% high-performing (99.50 - 99.99%)
+                    uptime = round(random.uniform(99.65, 99.99), 2)
 
                 rows.append({
                     "circle": s["circle"],
@@ -133,20 +141,24 @@ if __name__ == "__main__":
     
     df.to_csv(output_filepath, index=False)
 
-    print(f"Successfully generated dataset: {output_filepath}")
-    print(f"Total rows generated: {len(df)}")
+    print(f"✅ Generated dataset: {output_filepath}")
+    print(f"Total rows: {len(df)}")
     print(f"Unique Sites: {df['site_id'].nunique()}")
-    print(f"Circles covered: {df['circle'].nunique()}")
-    print(f"Months covered: {df['month'].unique()}")
-    print("\nDataset Sample (First 5 rows):")
-    print(df.head())
-
-    # Verify exception stats
-    print("\n--- Exception Statistics Verification ---")
-    sla_breaches = (df['uptime_pct'] < 95.0).sum()
+    print(f"Circles: {df['circle'].nunique()}")
+    
+    # Calculate unique site-level tenancy
+    site_month_df = df.drop_duplicates(subset=["site_id", "month"])
+    avg_tenancy = site_month_df["colocation_count"].mean()
+    avg_uptime = df["uptime_pct"].mean()
+    
+    sla_breaches_95 = (df['uptime_pct'] < 95.0).sum()
+    sla_breaches_995 = (df['uptime_pct'] < 99.5).sum()
     coloc_shortfalls = (df['colocation_count'] < df['target_colocations']).sum()
     energy_overruns = (df['energy_consumption_kwh'] > df['energy_budget_kwh'] * 1.10).sum()
 
-    print(f"SLA Breaches (< 95.0% Uptime): {sla_breaches} rows ({sla_breaches/len(df)*100:.1f}%)")
-    print(f"Colocation Shortfalls (< Target): {coloc_shortfalls} rows ({coloc_shortfalls/len(df)*100:.1f}%)")
-    print(f"Energy Overruns (> 110% Budget): {energy_overruns} rows ({energy_overruns/len(df)*100:.1f}%)")
+    print(f"Average Tenancy Ratio (per site): {avg_tenancy:.2f}x (Indus benchmark: ~1.62x)")
+    print(f"Average Fleet Uptime: {avg_uptime:.3f}% (Indus benchmark: ~99.9%)")
+    print(f"Critical SLA Breaches (<95%): {sla_breaches_95} rows ({sla_breaches_95/len(df)*100:.2f}%)")
+    print(f"SLA Breaches (<99.5%): {sla_breaches_995} rows ({sla_breaches_995/len(df)*100:.2f}%)")
+    print(f"Colocation Shortfalls (< Target): {coloc_shortfalls} rows ({coloc_shortfalls/len(df)*100:.2f}%)")
+    print(f"Energy Overruns (> 110% Budget): {energy_overruns} rows ({energy_overruns/len(df)*100:.2f}%)")

@@ -73,6 +73,53 @@ def flag_exceptions(
     return flagged_df
 
 
+def diagnose_root_cause_and_sop(flagged_df: pd.DataFrame) -> pd.DataFrame:
+    """
+    Perform prescriptive diagnostic attribution on flagged exceptions.
+    Maps exception parameters to realistic telecom root-causes, severity, and field SOP actions.
+    """
+    if flagged_df.empty:
+        return flagged_df
+
+    df_out = flagged_df.copy()
+    root_causes = []
+    prescriptive_sops = []
+    severities = []
+
+    for _, row in df_out.iterrows():
+        uptime = row.get("uptime_pct", 99.5)
+        energy_var = row.get("energy_variance_kwh", 0.0)
+        coloc_gap = row.get("colocation_gap", 0)
+
+        if uptime < 95.0:
+            if energy_var > 100:
+                severities.append("🔴 CRITICAL (P1)")
+                root_causes.append("SEB grid failure (>12 hrs/day); DG backup exhausted battery bank buffer")
+                prescriptive_sops.append("Dispatch mobile DG fuel bowser & replace dead battery strings. Raise SEB feeder restoration ticket.")
+            else:
+                severities.append("🔴 CRITICAL (P1)")
+                root_causes.append("Optical fiber backhaul cut during road widening; microwave protection link faded")
+                prescriptive_sops.append("Deploy OTDR fiber splicing crew. Realign secondary microwave antenna dish.")
+        elif coloc_gap > 0:
+            severities.append("🟡 MEDIUM (P3)")
+            root_causes.append("Secondary tenant onboarding delayed due to tower wind-load structural audit & antenna clearance")
+            prescriptive_sops.append("Issue Structural Clearance Certificate to telco. Schedule Joint Site Survey (JSS) with Circle Sales Lead.")
+        elif energy_var > 0:
+            severities.append("🟠 HIGH (P2)")
+            root_causes.append("Precision Air Conditioner condenser clogged; BTS cabinet thermal throttling & high fan draw")
+            prescriptive_sops.append("Service PAC condenser coils, clean dust filters, and calibrate digital check-meter against utility meter.")
+        else:
+            severities.append("🟢 MINOR (P4)")
+            root_causes.append("Minor telemetry drift in IoT RMS controller gateway")
+            prescriptive_sops.append("Initiate remote diagnostic reset on IoT RMS gateway via TOC.")
+
+    df_out["severity"] = severities
+    df_out["root_cause"] = root_causes
+    df_out["prescriptive_sop"] = prescriptive_sops
+
+    return df_out
+
+
 if __name__ == "__main__":
     sample_df = pd.DataFrame({
         "circle": ["Delhi", "Mumbai", "UP-East"],
@@ -85,4 +132,7 @@ if __name__ == "__main__":
         "energy_consumption_kwh": [1200.0, 1500.0, 1800.0],
         "energy_budget_kwh": [1200.0, 1400.0, 1200.0]
     })
-    print("Sample Exceptions:\n", flag_exceptions(sample_df))
+    ex = flag_exceptions(sample_df)
+    diag = diagnose_root_cause_and_sop(ex)
+    print("Sample Diagnostics:\n", diag[["site_id", "severity", "root_cause", "prescriptive_sop"]])
+
