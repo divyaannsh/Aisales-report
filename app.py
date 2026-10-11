@@ -539,30 +539,26 @@ def render_business_impact(flagged_df: pd.DataFrame, custom_energy_rate: float, 
 
     total_exposure = energy_cost_inr + sla_penalty_inr + coloc_revenue_loss
 
-    st.markdown("""
+    st.markdown(f"""
     <div class="impact-grid">
         <div class="impact-card">
-            <div class="impact-val" style="color: #F87171;">₹{:.1f}L</div>
+            <div class="impact-val" style="color: #F87171;">₹{total_exposure / 100000:.1f}L</div>
             <div class="impact-sub">Total Financial Exposure</div>
         </div>
         <div class="impact-card amber">
-            <div class="impact-val" style="color: #FBBF24;">₹{:.1f}L</div>
-            <div class="impact-sub">Energy Overrun (@₹{:.1f}/kWh)</div>
+            <div class="impact-val" style="color: #FBBF24;">₹{energy_cost_inr / 100000:.1f}L</div>
+            <div class="impact-sub">Energy Overrun (@₹{custom_energy_rate:.1f}/kWh)</div>
         </div>
         <div class="impact-card">
-            <div class="impact-val" style="color: #FB7185;">₹{:.1f}L</div>
-            <div class="impact-sub">SLA Penalties ({} breaches @₹{:,.0f})</div>
+            <div class="impact-val" style="color: #FB7185;">₹{sla_penalty_inr / 100000:.1f}L</div>
+            <div class="impact-sub">SLA Penalties ({sla_breach_count} breaches @₹{custom_sla_penalty:,.0f})</div>
         </div>
         <div class="impact-card blue">
-            <div class="impact-val" style="color: #38BDF8;">₹{:.1f}L</div>
-            <div class="impact-sub">Tenancy Revenue Gap ({} colocs)</div>
+            <div class="impact-val" style="color: #38BDF8;">₹{coloc_revenue_loss / 100000:.1f}L</div>
+            <div class="impact-sub">Tenancy Revenue Gap ({coloc_gap_total} colocs)</div>
         </div>
     </div>
-    """.format(
-        total_exposure / 100000,
-        energy_cost_inr / 100000, custom_energy_rate,
-        sla_penalty_inr / 100000, sla_breach_count, custom_sla_penalty,
-    ), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     st.caption(f"ℹ️ *Directional estimate based on configurable modeling assumptions (Tariff: ₹{custom_energy_rate}/kWh, SLA: ₹{custom_sla_penalty:,.0f}/breach, Coloc: ₹{custom_coloc_rent:,.0f}/mo). For scenario analysis only, not official contract figures.*")
 
