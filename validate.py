@@ -3,6 +3,11 @@ Validation module for Indus Towers AI Exception Reporter.
 
 Provides deterministic validation layer for LLM-generated SQL queries
 to prevent hallucinations (invalid columns/tables) and SQL injection.
+
+New checks (Step 2):
+  5. Must have FROM tower_sites in the query
+  6. Cannot end with a dangling AND/OR/WHERE/ON/comma (truncated SQL)
+  7. EXPLAIN-based SQLite parse verification on the read-only connection
 """
 
 import re
@@ -25,10 +30,36 @@ STANDARD_SQL_FUNCTIONS_AND_KEYWORDS = {
     "INTERSECT", "WITH", "OVER", "PARTITION"
 }
 
+# Keywords that make a query syntactically incomplete if they appear at the end
+_DANGLING_TAIL_PATTERN = re.compile(
+    r"\b(AND|OR|WHERE|ON|HAVING|JOIN|LEFT|RIGHT|INNER|OUTER|CROSS|NOT),?\s*$",
+    re.IGNORECASE
+)
+_DANGLING_COMMA_PATTERN = re.compile(r",\s*$")
+
 
 def _strip_string_literals(sql: str) -> str:
-    """Replace single-quoted string literals in SQL with empty string to avoid false identifier matching."""
+    """Replace single-quoted string literals with empty placeholder to avoid false identifier matching."""
     return re.sub(r"'(?:''|[^'])*'", "''", sql)
+
+
+def _sqlite_can_parse(sql: str) -> Tuple[bool, str]:
+    """
+    Run EXPLAIN <sql> on the read-only SQLite connection to verify syntactic parsability.
+    Returns (True, '') on success, (False, error_message) on failure.
+    """
+    import sqlite3
+    import os
+    db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "sales.db")
+    try:
+        conn = sqlite3.connect(f"file:{os.path.abspath(db_path)}?mode=ro", uri=True)
+        conn.execute(f"EXPLAIN {sql}")
+        conn.close()
+        return True, ""
+    except sqlite3.OperationalError as e:
+        return False, str(e)
+    except Exception as e:
+        return False, str(e)
 
 
 def validate_sql(
@@ -70,26 +101,48 @@ def validate_sql(
     tokens_upper = set(re.findall(r"\b[A-Z_]+\b", upper_sql))
     forbidden_found = tokens_upper.intersection(FORBIDDEN_KEYWORDS)
     if forbidden_found:
-        return False, f"Forbidden SQL operation detected: {', '.join(forbidden_found)}. Only SELECT queries are allowed."
+        return False, f"Forbidden SQL operation detected: {', '.join(sorted(forbidden_found))}. Only SELECT queries are allowed."
 
-    # 5. Schema verification: Check tables and columns
+    # 5. (NEW) Must reference an allowed table via FROM clause
     allowed_tables_lower = {t.lower() for t in allowed_tables}
-    allowed_cols_lower = {c.lower() for c in allowed_columns}
+    from_references = re.findall(r"\bFROM\s+([a-zA-Z0-9_]+)", trimmed_sql, re.IGNORECASE)
+    from_tables_lower = {t.lower() for t in from_references}
+    if not from_tables_lower:
+        return False, "Query has no FROM clause referencing 'tower_sites'."
+    if not from_tables_lower.intersection(allowed_tables_lower):
+        return False, (
+            f"Query does not reference an allowed table in FROM. "
+            f"Expected one of: {', '.join(sorted(allowed_tables))}."
+        )
 
-    # Extract table references (words after FROM or JOIN)
+    # 6. (NEW) Reject queries with a dangling trailing keyword (truncated SQL)
+    if _DANGLING_TAIL_PATTERN.search(trimmed_sql):
+        matched_keyword = _DANGLING_TAIL_PATTERN.search(trimmed_sql).group(1)
+        return False, (
+            f"Query appears truncated — it ends with keyword '{matched_keyword}'. "
+            "This indicates an incomplete SQL statement."
+        )
+    if _DANGLING_COMMA_PATTERN.search(trimmed_sql):
+        return False, "Query appears truncated — it ends with a comma."
+
+    # 7. (NEW) SQLite EXPLAIN parse check — catches malformed SQL that passes regex but fails at the DB
+    parseable, parse_err = _sqlite_can_parse(trimmed_sql)
+    if not parseable:
+        return False, f"SQLite cannot parse this query: {parse_err}"
+
+    # 8. Schema verification: Check all table references
     tables_found = set()
     from_join_pattern = r"\b(?:FROM|JOIN)\s+([a-zA-Z0-9_]+)"
     for match in re.finditer(from_join_pattern, trimmed_sql, re.IGNORECASE):
         table_name = match.group(1).lower()
-        if table_name not in STANDARD_SQL_FUNCTIONS_AND_KEYWORDS:
+        if table_name.upper() not in STANDARD_SQL_FUNCTIONS_AND_KEYWORDS:
             tables_found.add(table_name)
 
-    # Check referenced tables
     for tbl in tables_found:
         if tbl not in allowed_tables_lower:
             return False, (
                 f"Invalid table '{tbl}' referenced. "
-                f"The valid table(s) in schema are: {', '.join(allowed_tables)}."
+                f"The valid table(s) in schema are: {', '.join(sorted(allowed_tables))}."
             )
 
     # Strip single-quoted string literals before extracting identifier words
@@ -104,6 +157,7 @@ def validate_sql(
     for match in re.finditer(as_pattern, sql_without_strings, re.IGNORECASE):
         alias_names.add(match.group(1).lower())
 
+    allowed_cols_lower = {c.lower() for c in allowed_columns}
     invalid_cols = []
     for token in word_tokens:
         tok_lower = token.lower()
@@ -111,25 +165,21 @@ def validate_sql(
 
         if tok_upper in STANDARD_SQL_FUNCTIONS_AND_KEYWORDS or tok_upper in FORBIDDEN_KEYWORDS:
             continue
-
         if tok_lower in allowed_tables_lower:
             continue
-
         if tok_lower in alias_names:
             continue
-
         if tok_lower == "id":
             continue
-
         if tok_lower not in allowed_cols_lower:
             invalid_cols.append(token)
 
     if invalid_cols:
         unique_invalid = sorted(list(set(invalid_cols)))
-        tbl_display = allowed_tables[0] if allowed_tables else "tower_sites"
+        tbl_display = sorted(allowed_tables)[0] if allowed_tables else "tower_sites"
         return False, (
             f"Your query used invalid column(s): {', '.join(unique_invalid)}. "
-            f"The valid columns in table '{tbl_display}' are: {', '.join(allowed_columns)}."
+            f"The valid columns in table '{tbl_display}' are: {', '.join(sorted(allowed_columns))}."
         )
 
     return True, "Query validation passed successfully."

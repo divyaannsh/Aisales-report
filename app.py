@@ -942,10 +942,24 @@ def main():
 
         t0 = time.time()
         with st.spinner("🤖 Translating natural language query & verifying AST guardrails..."):
-            success, generated_sql, status_msg, attempts = generate_and_validate_sql(
+            success, generated_sql, status_msg, attempts, finish_reason = generate_and_validate_sql(
                 user_input, schema, allowed_cols, tables
             )
         elapsed_ms = (time.time() - t0) * 1000
+
+        if generated_sql and generated_sql.upper().startswith("UNSUPPORTED:"):
+            reason = generated_sql.split(":", 1)[1].strip() if ":" in generated_sql else generated_sql
+            log_query_audit(
+                user_question=user_input,
+                generated_sql=generated_sql,
+                is_valid=False,
+                validation_msg=f"Unsupported: {reason}",
+                rows_returned=0,
+                execution_time_ms=elapsed_ms,
+                finish_reason=finish_reason
+            )
+            st.info(f"ℹ️ **Unsupported Query Request**: {reason}")
+            return
 
         if not success:
             log_query_audit(
@@ -954,7 +968,8 @@ def main():
                 is_valid=False,
                 validation_msg=status_msg,
                 rows_returned=0,
-                execution_time_ms=elapsed_ms
+                execution_time_ms=elapsed_ms,
+                finish_reason=finish_reason
             )
             st.error(
                 f"🚨 **Security & Validation Failure**: Execution blocked to prevent database error or hallucination.\n\n"
@@ -970,7 +985,8 @@ def main():
                 is_valid=True,
                 validation_msg=status_msg,
                 rows_returned=len(raw_df),
-                execution_time_ms=elapsed_ms
+                execution_time_ms=elapsed_ms,
+                finish_reason=finish_reason
             )
         except Exception as e:
             log_query_audit(
@@ -979,7 +995,8 @@ def main():
                 is_valid=False,
                 validation_msg=f"Execution error: {str(e)}",
                 rows_returned=0,
-                execution_time_ms=elapsed_ms
+                execution_time_ms=elapsed_ms,
+                finish_reason=finish_reason
             )
             st.error(f"❌ Database execution error: {str(e)}")
             return

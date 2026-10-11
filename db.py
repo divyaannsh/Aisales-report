@@ -51,9 +51,15 @@ def init_db(db_path: str = DB_PATH, csv_path: str = CSV_PATH) -> None:
             is_valid INTEGER NOT NULL,
             validation_msg TEXT,
             rows_returned INTEGER,
-            execution_time_ms REAL
+            execution_time_ms REAL,
+            finish_reason TEXT
         )
     """)
+    try:
+        cursor.execute("ALTER TABLE query_audit_log ADD COLUMN finish_reason TEXT DEFAULT 'stop'")
+        conn.commit()
+    except Exception:
+        pass
 
     # Check row count
     cursor.execute("SELECT COUNT(*) FROM tower_sites")
@@ -167,6 +173,7 @@ def log_query_audit(
     validation_msg: str,
     rows_returned: int = 0,
     execution_time_ms: float = 0.0,
+    finish_reason: str = "stop",
     db_path: str = DB_PATH,
     jsonl_path: str = AUDIT_LOG_JSONL
 ) -> None:
@@ -181,7 +188,8 @@ def log_query_audit(
         "is_valid": is_valid,
         "validation_msg": validation_msg,
         "rows_returned": rows_returned,
-        "execution_time_ms": round(execution_time_ms, 2)
+        "execution_time_ms": round(execution_time_ms, 2),
+        "finish_reason": finish_reason
     }
     try:
         with open(jsonl_path, "a", encoding="utf-8") as f:
@@ -196,11 +204,11 @@ def log_query_audit(
         cursor.execute("""
             INSERT INTO query_audit_log (
                 timestamp, user_question, generated_sql, is_valid,
-                validation_msg, rows_returned, execution_time_ms
-            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                validation_msg, rows_returned, execution_time_ms, finish_reason
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
             now_iso, user_question, generated_sql, 1 if is_valid else 0,
-            validation_msg, rows_returned, execution_time_ms
+            validation_msg, rows_returned, execution_time_ms, finish_reason
         ))
         conn.commit()
         conn.close()
@@ -213,7 +221,7 @@ def get_recent_audit_logs(limit: int = 15, db_path: str = DB_PATH) -> pd.DataFra
     conn = sqlite3.connect(db_path)
     try:
         query = f"""
-            SELECT timestamp, user_question, generated_sql, is_valid, validation_msg, rows_returned, execution_time_ms
+            SELECT timestamp, user_question, generated_sql, is_valid, validation_msg, rows_returned, execution_time_ms, finish_reason
             FROM query_audit_log
             ORDER BY id DESC
             LIMIT {limit}
