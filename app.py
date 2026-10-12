@@ -1375,10 +1375,16 @@ SELECT
     ROUND((energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh, 1) AS energy_overrun_pct,
     (target_colocations - colocation_count) AS colocation_gap,
     -- Composite priority score: SLA weight 50, energy 30, coloc 20
+    -- SQLite has no LEAST/GREATEST: use CASE equivalents
     ROUND(
         (CASE WHEN uptime_pct < 95.0 THEN 50 WHEN uptime_pct < 99.5 THEN 25 ELSE 0 END)
-        + LEAST(30, GREATEST(0, (energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh))
-        + (GREATEST(0, target_colocations - colocation_count) * 10)
+        + CASE
+            WHEN (energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh < 0 THEN 0
+            WHEN (energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh > 30 THEN 30
+            ELSE (energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh
+          END
+        + (CASE WHEN target_colocations - colocation_count > 0
+               THEN (target_colocations - colocation_count) * 10 ELSE 0 END)
     , 1) AS priority_score
 FROM tower_sites
 WHERE uptime_pct < 99.5
