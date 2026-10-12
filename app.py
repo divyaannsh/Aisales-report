@@ -1014,10 +1014,11 @@ def main():
         # ---------------------------------------------------------
         # TABBED INTERACTIVE WORKSPACE
         # ---------------------------------------------------------
-        tab_report, tab_analytics, tab_guardrail = st.tabs([
+        tab_report, tab_analytics, tab_guardrail, tab_interview = st.tabs([
             "🚨 Exception Matrix & Financial Risk",
             "📊 Deep Operational Analytics & GIS",
-            "🛡️ SQL Validation & Guardrail Audit"
+            "🛡️ SQL Validation & Guardrail Audit",
+            "🎓 Interview Case Queries"
         ])
 
         # ─────────────────────────────────────────────────────────
@@ -1279,11 +1280,188 @@ def main():
             else:
                 st.info("No audit logs recorded yet in this session.")
 
+        # ─────────────────────────────────────────────────────────
+        # TAB 4: INTERVIEW CASE QUERIES (Live SQL on Real Data)
+        # ─────────────────────────────────────────────────────────
+        with tab_interview:
+            st.markdown("""
+            <div style='background:linear-gradient(135deg,#0F1B2D 0%,#1A2744 100%);border:1px solid #2D3F6B;
+                        border-radius:12px;padding:1.2rem 1.5rem;margin-bottom:1.2rem;'>
+                <h3 style='color:#60A5FA;margin:0 0 0.3rem 0;font-size:1.1rem;'>🎓 Insights Lead Interview — Live Case Queries</h3>
+                <p style='color:#94A3B8;margin:0;font-size:0.85rem;'>Each button runs the exact SQL that answers the interview scenario — on real tower data. Use these to understand the logic before your interview.</p>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Define all 6 interview case queries
+            interview_cases = [
+                {
+                    "id": "q4",
+                    "label": "Q4 · Energy Cost Overrun by Circle",
+                    "icon": "⚡",
+                    "scenario": "Energy costs in one circle have increased over three months while uptime is stable. Which circles have the worst average energy overrun percentage?",
+                    "tip": "Validate → Segment by circle → Find % over budget → Rank by severity",
+                    "sql": """
+SELECT
+    circle,
+    COUNT(*) AS site_months,
+    ROUND(AVG((energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh), 2) AS avg_overrun_pct,
+    ROUND(SUM(energy_consumption_kwh - energy_budget_kwh), 0) AS total_excess_kwh,
+    COUNT(CASE WHEN energy_consumption_kwh > energy_budget_kwh * 1.10 THEN 1 END) AS sites_over_10pct
+FROM tower_sites
+WHERE energy_consumption_kwh > energy_budget_kwh
+GROUP BY circle
+ORDER BY avg_overrun_pct DESC;
+"""
+                },
+                {
+                    "id": "q6",
+                    "label": "Q6 · 5 Worst-Uptime Towers (Latest Month)",
+                    "icon": "📉",
+                    "scenario": "Identify the five towers with the worst uptime in the latest available reporting month.",
+                    "tip": "MAX(month) subquery → filter → ORDER BY uptime ASC → LIMIT 5",
+                    "sql": """
+SELECT
+    site_id,
+    circle,
+    month,
+    ROUND(uptime_pct, 3) AS uptime_pct,
+    CASE
+        WHEN uptime_pct < 95.0 THEN '🔴 Critical SLA Breach'
+        WHEN uptime_pct < 99.5 THEN '🟡 Contractual SLA Breach'
+        ELSE '🟢 Within SLA'
+    END AS sla_status
+FROM tower_sites
+WHERE month = (SELECT MAX(month) FROM tower_sites)
+ORDER BY uptime_pct ASC
+LIMIT 5;
+"""
+                },
+                {
+                    "id": "q7",
+                    "label": "Q7 · Isolated vs Systemic: Circle-Level Uptime",
+                    "icon": "🔍",
+                    "scenario": "Five towers have low uptime. Determine if this is isolated to a few sites or a larger systemic issue affecting an entire circle.",
+                    "tip": "Historical baseline → Circle avg → Count critical sites → Rank circles",
+                    "sql": """
+SELECT
+    circle,
+    ROUND(AVG(uptime_pct), 3) AS avg_circle_uptime,
+    COUNT(CASE WHEN uptime_pct < 95.0 THEN 1 END) AS critical_breaches,
+    COUNT(CASE WHEN uptime_pct < 99.5 THEN 1 END) AS sla_breaches,
+    COUNT(DISTINCT site_id) AS total_sites,
+    ROUND(COUNT(CASE WHEN uptime_pct < 99.5 THEN 1 END) * 100.0 / COUNT(*), 1) AS breach_rate_pct
+FROM tower_sites
+WHERE month = (SELECT MAX(month) FROM tower_sites)
+GROUP BY circle
+ORDER BY avg_circle_uptime ASC;
+"""
+                },
+                {
+                    "id": "q8",
+                    "label": "Q8 · Priority Ranking: 20 Worst Towers",
+                    "icon": "🏆",
+                    "scenario": "20 towers are underperforming but you can fix only 5 this week. Rank them by SLA breach severity, energy overrun and colocation shortfall.",
+                    "tip": "SLA severity → energy overrun % → colocation gap → composite priority score",
+                    "sql": """
+SELECT
+    site_id,
+    circle,
+    ROUND(uptime_pct, 2) AS uptime_pct,
+    CASE
+        WHEN uptime_pct < 95.0 THEN '🔴 Critical'
+        WHEN uptime_pct < 99.5 THEN '🟡 High'
+        ELSE '🟢 Medium'
+    END AS sla_severity,
+    ROUND((energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh, 1) AS energy_overrun_pct,
+    (target_colocations - colocation_count) AS colocation_gap,
+    -- Composite priority score: SLA weight 50, energy 30, coloc 20
+    ROUND(
+        (CASE WHEN uptime_pct < 95.0 THEN 50 WHEN uptime_pct < 99.5 THEN 25 ELSE 0 END)
+        + LEAST(30, GREATEST(0, (energy_consumption_kwh - energy_budget_kwh) * 100.0 / energy_budget_kwh))
+        + (GREATEST(0, target_colocations - colocation_count) * 10)
+    , 1) AS priority_score
+FROM tower_sites
+WHERE uptime_pct < 99.5
+AND month = (SELECT MAX(month) FROM tower_sites)
+ORDER BY priority_score DESC
+LIMIT 20;
+"""
+                },
+                {
+                    "id": "q9",
+                    "label": "Q9 · Data Discrepancy Check: Circle Uptime Validation",
+                    "icon": "🔎",
+                    "scenario": "The regional operations manager disputes your circle's uptime figures. Validate: compare min, avg and max uptime per circle across all months to surface data inconsistencies.",
+                    "tip": "Cross-validate by checking variance — large min/max spread flags data quality issues",
+                    "sql": """
+SELECT
+    circle,
+    COUNT(DISTINCT month) AS months_reported,
+    COUNT(DISTINCT site_id) AS unique_sites,
+    ROUND(MIN(uptime_pct), 3) AS min_uptime,
+    ROUND(AVG(uptime_pct), 3) AS avg_uptime,
+    ROUND(MAX(uptime_pct), 3) AS max_uptime,
+    ROUND(MAX(uptime_pct) - MIN(uptime_pct), 3) AS uptime_spread,
+    COUNT(CASE WHEN uptime_pct < 99.5 THEN 1 END) AS total_breaches
+FROM tower_sites
+GROUP BY circle
+ORDER BY avg_uptime ASC;
+"""
+                },
+                {
+                    "id": "q11",
+                    "label": "Q11 · Automation ROI: Circles with Recurring Underperformance",
+                    "icon": "🤖",
+                    "scenario": "Identify which circles have recurring SLA breaches across multiple months — these benefit most from automated monitoring and alerting (replacing 20-hour manual report prep).",
+                    "tip": "Recurring = breach in 2+ months. Automation ROI highest where manual review is most repetitive.",
+                    "sql": """
+SELECT
+    circle,
+    COUNT(DISTINCT site_id) AS underperforming_sites,
+    COUNT(DISTINCT month) AS months_with_breach,
+    ROUND(AVG(uptime_pct), 3) AS avg_uptime,
+    COUNT(*) AS total_breach_records,
+    -- Estimated manual review hours avoided per month (assume 0.5hr per breach record)
+    ROUND(COUNT(*) * 0.5, 1) AS est_hours_saved_per_month
+FROM tower_sites
+WHERE uptime_pct < 99.5
+GROUP BY circle
+HAVING months_with_breach >= 2
+ORDER BY underperforming_sites DESC, months_with_breach DESC;
+"""
+                }
+            ]
+
+            for case in interview_cases:
+                st.markdown(
+                    f"<div style='border-left:3px solid #3B82F6;padding:0.5rem 0 0.5rem 1rem;margin:1rem 0 0.3rem 0;'>"
+                    f"<span style='font-size:1rem;font-weight:700;color:#E2E8F0;'>{case['icon']} {case['label']}</span><br>"
+                    f"<span style='font-size:0.82rem;color:#94A3B8;'>{case['scenario']}</span><br>"
+                    f"<span style='font-size:0.78rem;color:#60A5FA;'>💡 Framework: {case['tip']}</span>"
+                    f"</div>",
+                    unsafe_allow_html=True
+                )
+                with st.expander(f"📋 View SQL for {case['label']}", expanded=False):
+                    st.code(case['sql'].strip(), language="sql")
+
+                if st.button(f"▶ Run: {case['label']}", key=f"interview_run_{case['id']}"):
+                    with st.spinner("Running query on tower_sites database…"):
+                        try:
+                            result_df = execute_query(case['sql'], read_only=True)
+                            if result_df is not None and not result_df.empty:
+                                st.dataframe(result_df, use_container_width=True, hide_index=True)
+                                st.caption(f"✅ {len(result_df)} rows returned from tower_sites database.")
+                            else:
+                                st.info("Query returned 0 rows on the current dataset.")
+                        except Exception as e:
+                            st.error(f"Query error: {e}")
+                st.markdown("<hr style='border-color:#1E293B;margin:0.4rem 0;'>", unsafe_allow_html=True)
+
     # ---------------------------------------------------------
-    # INTERVIEW & ARCHITECTURE SHOWCASE
+    # ARCHITECTURE SHOWCASE (bottom expander)
     # ---------------------------------------------------------
     st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
-    with st.expander("🎓 Technical Architecture & Interview Talking Points"):
+    with st.expander("🏗️ Technical Architecture & System Blueprint"):
         st.markdown("""
         ### TowerPulse AI — System Architecture Blueprint
 
@@ -1307,7 +1485,7 @@ def main():
                     │               │
                     ▼               ▼
         [ 4. SQL EXECUTION ]       [ Self-Correction Retry (Max 2 Attempts) ]
-          └── Single Source of Truth: SQL Database (Local SQLite / Power BI Semantic Model in Prod)
+          └── Single Source of Truth: SQL Database (Local SQLite / Power BI in Prod)
                             │
                             ▼
         [ 5. ACTIONABLE EXCEPTION REPORT ]
